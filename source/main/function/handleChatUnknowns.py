@@ -109,25 +109,33 @@ def handleMessages_sendfile(id):
             fileImage = request.files.get("img")
             sentAt_time = datetime.now()
             imgLink = make_url_apache_image(id, PATH_IMAGE, fileImage, "note")
-
+            if input_data_json["idReceive"] == None:
+                return {
+                    "status": 414,
+                    "message": "Please input idReceive in body"
+                   
+                }
             list_block_unknow = block_unknow.query.filter(
-                block_unknow.idUserOwner == json["idReceive"],
+                block_unknow.idUserOwner == input_data_json["idReceive"],
                 block_unknow.idUserBlock == int(id),
             ).first()
+            print("_____ctai sao crash o day____")
             if list_block_unknow != None:
                 return {
                     "status": 405,
                     "message": "Account "
-                    + str(json["idReceive"])
+                    + str(input_data_json["idReceive"])
                     + " Block "
                     + str(id)
                     + " , Please Recheck",
                 }
-            user = Users.query.filter(Users.id == json["idReceive"]).first()
+            print("________list_block_unknow________")
+            user = Users.query.filter(Users.id == input_data_json["idReceive"]).first()
             if user == None:
                 return {
                     "status": 209,
-                    "message": "cant find user have id: " + str(json["idReceive"]),
+                    "message": "cant find user have id: "
+                    + str(input_data_json["idReceive"]),
                 }
             if user.isBlockAllUnknow == 1:
                 return {
@@ -137,6 +145,7 @@ def handleMessages_sendfile(id):
                     + " Disable Receive Any Unknowns Message",
                 }
             if input_data_json["type"] in ["image", "icon-image", "multi-image"]:
+                print("______SONPRO_input_data_json____________________")
                 chatUnknowns = ChatUnknowns(
                     sendAt=sentAt_time,
                     idReceive=int(input_data_json["idReceive"]),
@@ -144,6 +153,10 @@ def handleMessages_sendfile(id):
                     type=input_data_json["type"],
                     idSend=int(id),
                     idRoom=input_data_json["idRoom"],
+                )
+                print(
+                    "_____________chatUnknowns_____________"
+                    + str(chatUnknowns.idReceive)
                 )
             elif input_data_json["type"] == "text":
                 print("_____TYPE_CHUA_KIP_VAO____")
@@ -165,7 +178,7 @@ def handleMessages_sendfile(id):
                     idSend=int(id),
                     idRoom=input_data_json["idRoom"],
                 )
-            print("________________________" + str(chatUnknowns))
+            print("__________chatUnknowns______________" + str(chatUnknowns))
             db.session.add(chatUnknowns)
             db.session.commit()
             chat_parse = {}

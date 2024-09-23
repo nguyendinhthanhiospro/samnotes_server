@@ -479,6 +479,24 @@ def statemessage_chatgroup(idMessage, idUser):
         )
 
 
+def send_multiple_images_send_message(idMes):
+    try:
+        if request.method == "DELETE":
+            message = Chat1vs1.query.filter(Chat1vs1.id == idMes).first()
+            db.session.delete(message)
+            db.session.commit()
+            return make_response(
+                jsonify({"message": "Deleted message", "status": 200}), 200
+            )
+        else:
+            return make_response(
+                jsonify({"message": "Method is not allowed", "status": 500}), 500
+            )
+    except Exception as e:
+        print(e)
+        return make_response(jsonify({"message": f"Error {e}", "status": 500}), 500)
+
+
 def deleteMessage(idMes):
     try:
         if request.method == "DELETE":

@@ -59,7 +59,7 @@ def make_url_apache_image(id_user, path, imageSaved, typeof):
     if not os.path.isdir(path):
         os.makedirs(path)
     else:
-        print("____path____" + str(path))
+        print("____path___make_url_apache_image_" + str(path))
         user_path = os.path.join(path, str(id_user))
         if not os.path.isdir(user_path):
             os.makedirs(user_path)

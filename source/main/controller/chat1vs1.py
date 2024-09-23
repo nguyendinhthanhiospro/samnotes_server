@@ -21,6 +21,11 @@ app.add_url_rule(
     view_func=statemessage_chatgroup,
 )
 app.add_url_rule("/message/<string:idMes>", methods=["DELETE"], view_func=deleteMessage)
+app.add_url_rule(
+    "/send_multiple_image/<string:idMes>/<string:idUserSend>",
+    methods=["DELETE"],
+    view_func=send_multiple_images_send_message,
+)
 
 app.add_url_rule(
     "/chat/search_chat/<string:id>/<string:text>/<int:page>",
