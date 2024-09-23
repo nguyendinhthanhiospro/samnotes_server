@@ -18,6 +18,7 @@ from PIL import Image
 from source.main.model.block_unknow import block_unknow
 from source.main.model.ChatGroupModel import ChatGroupModel
 from source.main.model.members import Members
+from source.main.model.images import Images
 
 config = {
     "user": "sonpro",
@@ -110,11 +111,7 @@ def handleMessages_sendfile(id):
             sentAt_time = datetime.now()
             imgLink = make_url_apache_image(id, PATH_IMAGE, fileImage, "note")
             if input_data_json["idReceive"] == None:
-                return {
-                    "status": 414,
-                    "message": "Please input idReceive in body"
-                   
-                }
+                return {"status": 414, "message": "Please input idReceive in body"}
             list_block_unknow = block_unknow.query.filter(
                 block_unknow.idUserOwner == input_data_json["idReceive"],
                 block_unknow.idUserBlock == int(id),
@@ -881,6 +878,14 @@ def handleGetMesChat1vs1(id, idReceived):
                     message["sendAt"] = chat.sendAt.strftime(
                         "%a, %d %b %Y %H:%M:%S GMT"
                     )
+                    images_send = Images.query.filter(Images.idChat1_1 == chat.id)
+                    link_image = []
+                    for image_item in images_send:
+                        link_image.append(
+                            {"id": image_item.idImage, "link": image_item.link}
+                        )
+                    if len(link_image) > 0:
+                        message["list_images"] = link_image
                     messages.append(message)
 
                 all_mess["messages"] = messages

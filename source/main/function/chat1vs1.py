@@ -9,6 +9,8 @@ from source.main.model.users import Users
 from socket import *
 import base64
 from source.main.model.ChatGroupModel import ChatGroupModel
+from source.main.model.images import Images
+from source.main.function.middleware import *
 
 
 def base64ToByte(base64data):
@@ -235,6 +237,14 @@ def chat1vs1(id):
                 view_chat["gif"] = row.gif
                 view_chat["state"] = row.state
                 view_chat["sendAt"] = row.sendAt
+                images_send = Images.query.filter(Images.idChat1_1 == row.id)
+                link_image = []
+                for image_item in images_send:
+                    link_image.append(
+                        {"id": image_item.idImage, "link": image_item.link}
+                    )
+                if len(link_image) > 0:
+                    view_chat["list_images"] = link_image
                 data.append(view_chat)
             return {"state": 200, "data": data}
         except Exception as e:
@@ -481,12 +491,41 @@ def statemessage_chatgroup(idMessage, idUser):
 
 def send_multiple_images_send_message(idMes):
     try:
-        if request.method == "DELETE":
+        if request.method == "POST":
             message = Chat1vs1.query.filter(Chat1vs1.id == idMes).first()
-            db.session.delete(message)
+            if message == None:
+                return make_response(
+                    jsonify(
+                        {"message": "Can not find message " + str(idMes), "status": 205}
+                    ),
+                    205,
+                )
+            PATH_IMAGE = "/var/www/samnote-build/image"
+            fileImage = request.files.get("image")
+            imgLink = make_url_apache_image(
+                message.idSend, PATH_IMAGE, fileImage, "chat_message"
+            )
+            new_image = Images(
+                idNote=0,
+                link=imgLink,
+                idUserUpload=message.idSend,
+                idChat1_1=message.id,
+            )
+            db.session.add(new_image)
             db.session.commit()
             return make_response(
-                jsonify({"message": "Deleted message", "status": 200}), 200
+                jsonify(
+                    {
+                        "message": "send images to message " + str(idMes),
+                        "imageLink": imgLink,
+                        "idImage": new_image.idImage,
+                        "idChat1_1": new_image.idChat1_1,
+                        "room_chat": message.room,
+                        "idUserUpload": new_image.idUserUpload,
+                        "status": 200,
+                    }
+                ),
+                200,
             )
         else:
             return make_response(

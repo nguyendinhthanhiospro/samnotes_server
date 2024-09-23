@@ -388,13 +388,14 @@ def handle_send_message(data):
                 type=message["type"],
             )
             if newChat.type in ["image", "icon-image", "muti-image"]:
-                link_image = make_url_image_base64(
-                    message["idSend"],
-                    PATH_IMAGE,
-                    base64ToByte(message["data"]),
-                    "chat_group",
-                )
-                newChat.linkImage = link_image
+                if message["data"] != None:
+                    link_image = make_url_image_base64(
+                        message["idSend"],
+                        PATH_IMAGE,
+                        base64ToByte(message["data"]),
+                        "chat_group",
+                    )
+                    newChat.linkImage = link_image
             if newChat.type == "gif":
                 newChat.gif = message["data"]
             newChat.text = message["content"]

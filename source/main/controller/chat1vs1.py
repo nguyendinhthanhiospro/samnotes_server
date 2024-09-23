@@ -22,8 +22,8 @@ app.add_url_rule(
 )
 app.add_url_rule("/message/<string:idMes>", methods=["DELETE"], view_func=deleteMessage)
 app.add_url_rule(
-    "/send_multiple_image/<string:idMes>/<string:idUserSend>",
-    methods=["DELETE"],
+    "/send_multiple_image/<string:idMes>",
+    methods=["POST"],
     view_func=send_multiple_images_send_message,
 )
 

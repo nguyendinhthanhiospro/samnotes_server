@@ -1584,7 +1584,9 @@ async def create_new_note_image(id_user):
         db.session.add(new_data)
         db.session.commit()
 
-        new_image = Images(idNote=new_note.idNote, link=URLImage, idUserUpload=id_user)
+        new_image = Images(
+            idNote=new_note.idNote, link=URLImage, idUserUpload=id_user, idChat1_1=0
+        )
         print("save_image________")
         db.session.add(new_image)
         db.session.commit()
@@ -1638,7 +1640,7 @@ def add_image_note():
             for image in image_notes:
                 URLImage = make_url_image(id_user, PATH_IMAGE, image, "note")
                 new_image = Images(
-                    idNote=note.idNote, link=URLImage, idUserUpload=id_user
+                    idNote=note.idNote, link=URLImage, idUserUpload=id_user, idChat1_1=0
                 )
                 print("save_image________")
                 db.session.add(new_image)

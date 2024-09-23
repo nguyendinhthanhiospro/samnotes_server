@@ -25,7 +25,7 @@ def upload_image_for_avatar(idUser):
         PATH_IMAGE = "/var/www/samnote-build/image"
         fileImage = request.files.get("image")
         imgLink = make_url_apache_image(idUser, PATH_IMAGE, fileImage, "note")
-        new_image = Images(idNote=0, link=imgLink, idUserUpload=idUser)
+        new_image = Images(idNote=0, link=imgLink, idUserUpload=idUser, idChat1_1=0)
         db.session.add(new_image)
         db.session.commit()
         return make_response(
@@ -412,7 +412,7 @@ def getAllGroup(idMem):
                 }
 
                 dataReturn.append(group_if)
-    
+
             if dem_so_group_member_ben_trong == 0:
                 return {
                     "status": 204,
