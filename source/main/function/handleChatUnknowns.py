@@ -237,6 +237,7 @@ def handleMessages(id):
                 .order_by(ChatUnknowns.sendAt.desc())
                 .all()
             )
+
             user = Users.query.filter(Users.id == id).first()
             data = []
             for chat in chats:
@@ -253,7 +254,10 @@ def handleMessages(id):
                 chat_parse["sendAt"] = chat.sendAt.strftime("%a, %d %b %Y %H:%M:%S GMT")
                 data.append(chat_parse)
 
-            return {"status": 200, "data": data}
+            return (
+                jsonify({"status": 200, "data": data}),
+                200,
+            )
         except Exception as e:
             print(str(e))
             return {"status": 500, "message": str(e)}
@@ -489,6 +493,10 @@ def handleListUser(id):
                 data_user["idUser"] = user.id
                 data_user["username"] = user.user_name
                 data_user["avatar"] = user.linkAvatar
+                # dem so tin nhan chua doc
+                unReadCount = ChatUnknowns.query.filter_by(
+                    idSend=id, status="unseen"
+                ).count()
                 if chat.type in ["image", "multi-image", "icon-image", "gif"]:
                     last_text = "sent an image"
                 else:
@@ -502,6 +510,7 @@ def handleListUser(id):
                         "last_text": last_text,
                         "send_at": chat.sendAt.strftime("%a, %d %b %Y %H:%M:%S GMT"),
                         "user": data_user,
+                        "unReadCount": unReadCount,
                     }
                 )
             for room in roomUnknows:
