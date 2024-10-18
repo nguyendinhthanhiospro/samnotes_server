@@ -13,6 +13,11 @@ import smtplib
 import base64
 
 from source.main.model.groups import Groups
+from source.main.model.favorite import Favorites
+from source.main.model.favorite_note import Favorites_Note
+from source.main.model.favorite_reply import Favorites_Reply
+from source.main.model.comments import Comments
+from source.main.model.notes import Notes
 
 # chat = db.session.execute(text(
 #                             'Select * from users inner join chat1vs1 on users.id= chat1vs1.idReceive'))
@@ -447,3 +452,218 @@ def handle_send_message(data):
         # Log the error message
         print("SQL Error:", str(e))
         emit("send_message", {"message": "Error _______" + str(e)})
+
+
+# viet code 15-oct-2024
+# favorite comment notes by idcomment
+@socketIo.on("favorite_notes_comment")
+def favorite(data):
+    try:
+        idComment = data.get("idComment")
+        idUser = data.get("idUser")
+        type = data.get("type")
+        comment = Comments.query.filter(Comments.id == idComment).first()
+        if comment:
+            fav = Favorites.query.filter(
+                Favorites.idComment == idComment,
+                Favorites.idUser == idUser,
+            ).first()
+            if fav:
+                if fav.type == type:
+                    db.session.delete(fav)
+                    db.session.commit()
+                    message = "Remove favorite successful"
+                else:
+                    fav.type = type
+                    db.session.commit()
+                    message = "Update favorite successful"
+            else:
+                favorite = Favorites(
+                    idComment=idComment,
+                    idUser=idUser,
+                    type=type,
+                )
+                db.session.add(favorite)
+                db.session.commit()
+                message = "Add favorite successful"
+            # Gửi thông báo qua WebSocket
+            emit(
+                "favorite_notes_comment",
+                {
+                    "idUser": idUser,
+                    "message": message,
+                    "idComment": idComment,
+                    "idNote": comment.idNote,
+                },
+                broadcast=True,
+            )
+        else:
+            emit(
+                "favorite_notes_comment",
+                {"status": 500, "message": "Comment is not exist"},
+            )
+    except Exception as e:
+        print("-----error-----", str(e))
+        emit(
+            "favorite_notes_comment",
+            {"status": 500, "message": f"Something went wrong! {e}"},
+        )
+
+
+# favorite note by idNote
+@socketIo.on("favorite_notes")
+def favorite(data):
+    try:
+        idNote = data.get("idNote")
+        idUserLike = data.get("idUser")
+        type = data.get("type")
+        note = Notes.query.filter(Notes.idNote == idNote).first()
+        if note:
+            fav = Favorites_Note.query.filter(
+                Favorites_Note.idNote == idNote,
+                Favorites_Note.idUser == idUserLike,
+            ).first()
+            if fav:
+                if fav.type == type:
+                    db.session.delete(fav)
+                    db.session.commit()
+                    message = "Remove favorite successful"
+                else:
+                    fav.type = type
+                    db.session.commit()
+                    message = "Update favorite successful"
+            else:
+                favorite = Favorites_Note(
+                    idNote=idNote,
+                    idUser=idUserLike,
+                    type=type,
+                )
+                db.session.add(favorite)
+                db.session.commit()
+                message = "Add favorite successful"
+            # Gửi thông báo qua WebSocket
+            emit(
+                "favorite_notes",
+                {
+                    "idUserLike": idUserLike,
+                    "message": message,
+                    "idNote": idNote,
+                    "idUserNote": note.idUser,
+                },
+                broadcast=True,
+            )
+        else:
+            emit(
+                "favorite_notes",
+                {"status": 500, "message": "Notes is not exist"},
+            )
+    except Exception as e:
+        print("-----error-----", e)
+        emit(
+            "favorite_notes",
+            {"status": 500, "message": f"Something went wrong! {e}"},
+        )
+
+
+# favorite note by idReply
+@socketIo.on("favorite_reply")
+def favorite(data):
+    try:
+        idReply = data.get("idReply")
+        idUser = data.get("idUser")
+        type = data.get("type")
+        reply = Comments.query.filter(Comments.id == idReply).first()
+        if reply:
+            fav_reply = Favorites_Reply.query.filter(
+                Favorites_Reply.idReply == idReply,
+                Favorites.idUser == idUser,
+            ).first()
+            if fav_reply:
+                if fav_reply.type == type:
+                    db.session.delete(fav_reply)
+                    db.session.commit()
+                    message = "Remove favorite successful"
+                else:
+                    fav_reply.type = type
+                    db.session.commit()
+                    message = "Update favorite successful"
+            else:
+                favorite = Favorites_Reply(
+                    idReply=idReply,
+                    idUser=idUser,
+                    type=type,
+                )
+                db.session.add(favorite)
+                db.session.commit()
+                message = "Add favorite successful"
+            # Gửi thông báo qua WebSocket
+            emit(
+                "favorite_reply",
+                {
+                    "idUser": idUser,
+                    "message": message,
+                    "idReply": idReply,
+                    "idNote": reply.idNote,
+                },
+                broadcast=True,
+            )
+        else:
+            emit(
+                "favorite_reply",
+                {"status": 500, "message": "Reply is not exist"},
+            )
+    except Exception as e:
+        print("-----error-----", e)
+        emit(
+            "favorite_reply",
+            {"status": 500, "message": f"Something went wrong! {e}"},
+        )
+
+
+@socketIo.on("post_comment_note")
+def postCommentNote(data):
+    try:
+        json = data["data"]
+        print(json)
+        print(json["sendAt"])
+        sentAt_time = datetime.strptime(json["sendAt"], "%Y-%m-%dT%H:%M:%S.%f%z")
+        print(json["content"])
+        comments = Comments(
+            sendAt=sentAt_time,
+            idNote=json["idNote"],
+            text=json["content"],
+            parent_id=json["parent_id"],
+        )
+        print("loi o ghep su kien")
+        if json["idUser"]:
+            comments.idUser = json["idUser"]
+        # print(comments)
+        db.session.add(comments)
+        db.session.commit()
+        comments_users = {}
+        comments_users["id"] = comments.id
+        comments_users["idNote"] = comments.idNote
+        comments_users["idUser"] = comments.idUser
+        comments_users["parent_id"] = comments.parent_id
+        comments_users["content"] = comments.text
+        comments_users["sendAt"] = str(comments.sendAt)
+
+        emit(
+            "post_comment_note",
+            {
+                "status": 200,
+                "message": "Comment has been added successfully",
+                "data": comments_users,
+            },
+            broadcast=True,
+        )
+    except Exception as e:
+        print("-------error-------", e)
+        emit(
+            "post_comment_note",
+            {
+                "status": 500,
+                "message": f"An error occurred, please check again: ---{e}----",
+                "data": [],
+            },
+        )

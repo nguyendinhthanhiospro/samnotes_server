@@ -29,10 +29,11 @@ def handleUsers(param):
         try:
             json = request.json
             user = Users.query.get(param)
+            print()
             if pbkdf2_sha256.verify(json["password"], user.password_hash):
                 db.session.delete(user)
                 db.session.commit()
-                return {"status": 200, "message": "User was deleted successfully"}
+                return {"status": 200, "message": "User was deleted successfully"}, 200
             else:
                 return make_response(
                     jsonify({"status": 400, "message": "Password has some wrong"}), 400
@@ -168,6 +169,7 @@ def getProfile(who):
             notes = (
                 db.session.query(Notes, Datas)
                 .join(Datas, Datas.idNote == Notes.idNote)
+                .order_by(Notes.updateAt.desc())
                 .filter(Notes.idUser == who)
                 .all()
             )
@@ -489,3 +491,42 @@ def del_user(id_user: int):
     except Exception as e:
         return {"status": 500, "message": str(e)}
     return jsonify({"status": 200, "message": "Delete Account Done"})
+
+
+def check_inapp(id_user: int):
+    try:
+        userFindBuy = Users.query.filter(Users.id == id_user).first()
+        if userFindBuy == None:
+            return {"status": 300, "message": "Cant Find User id " + str(id_user)}
+    except Exception as e:
+        return {"status": 500, "message": str(e)}
+    return jsonify(
+        {
+            "status": 200,
+            "message": "In App Get Account Done",
+            "inapp": userFindBuy.inapp,
+            "idUser": userFindBuy.id,
+        }
+    )
+
+
+def buy_in_app_okie(id_user: int):
+    try:
+        userFindBuy = Users.query.filter(Users.id == id_user).first()
+        if userFindBuy == None:
+            return {"status": 300, "message": "Cant Find User id " + str(id_user)}
+
+        userFindBuy.inapp = 1
+        db.session.add(userFindBuy)
+        db.session.commit()
+
+    except Exception as e:
+        return {"status": 500, "message": str(e)}
+    return jsonify(
+        {
+            "status": 200,
+            "message": "In App Account Done",
+            "inapp": userFindBuy.inapp,
+            "idUser": userFindBuy.id,
+        }
+    )

@@ -9,13 +9,16 @@ from flask_cors import cross_origin
 from source.main.model.comments import Comments
 from source.main.model.datas import Datas
 from source.main.model.favorite import Favorites
+from source.main.model.favorite_note import Favorites_Note
+from source.main.model.favorite_reply import Favorites_Reply
 from source.main.model.nbnotes import Nbnotes
 from source.main.model.notes import Notes
 from source.main.model.images import Images
 from source.main.model.colors import Colors
 from source.main.model.notes import *
 
-PATH_IMAGE = r"/home/thinkdiff/Documents/ImageNote"
+PATH_IMAGE = r"/home/thinkdiff/Documents/ImageNote"  # dung dan luu anh
+
 from source import app
 
 from flask import jsonify, make_response, request, url_for, send_from_directory, session
@@ -40,10 +43,27 @@ def getNotes(notes):
     try:
         dataAllNote = []
         # print("________________________getnotes___________________________________________")
+        # print("_____notes_______", notes)
+
         for note in notes:
             # print(note)
             note_parse = {}
-            # print(note.Notes.type)
+            print(note.Notes.type)
+            # total like , dislike, comment
+            like_count = 0
+            dislike_count = 0
+            total_favorites = Favorites_Note.query.filter(
+                Favorites_Note.idNote == note.Notes.idNote
+            ).all()
+            for reation in total_favorites:
+                if reation.type == "like":
+                    like_count += 1
+                elif reation.type == "dislike":
+                    dislike_count += 1
+            comment_count = Comments.query.filter(
+                Comments.idNote == note.Notes.idNote
+            ).count()
+            # print("____comment____", comment_count)
             if note.Notes.type == "checklist" or note.Notes.type == "checkList":
                 flag = False
                 # print("checklist if len(data) > 0:")
@@ -64,6 +84,9 @@ def getNotes(notes):
                             )
                 if not flag:
                     note_parse["idNote"] = note.Notes.idNote
+                    note_parse["like_count"] = like_count
+                    note_parse["dislike_count"] = dislike_count
+                    note_parse["comment_count"] = comment_count
                     note_parse["type"] = note.Notes.type
                     note_parse["data"] = [
                         {
@@ -110,6 +133,9 @@ def getNotes(notes):
                 #  print(note.Datas.content)
                 note_parse["view"] = note.Notes.view
                 note_parse["idNote"] = note.Notes.idNote
+                note_parse["like_count"] = like_count
+                note_parse["dislike_count"] = dislike_count
+                note_parse["comment_count"] = comment_count
                 note_parse["type"] = note.Notes.type
                 note_parse["data"] = note.Datas.content
                 note_parse["title"] = note.Notes.title
@@ -147,6 +173,9 @@ def getNotes(notes):
                 # print("note.Notes.type == image")
                 note_parse["view"] = note.Notes.view
                 note_parse["idNote"] = note.Notes.idNote
+                note_parse["like_count"] = like_count
+                note_parse["dislike_count"] = dislike_count
+                note_parse["comment_count"] = comment_count
                 note_parse["type"] = note.Notes.type
                 note_parse["data"] = note.Datas.content
                 note_parse["title"] = note.Notes.title
@@ -444,6 +473,7 @@ def getPublicNotes():
                 "update_at": note.Notes.createAt,
                 "author": note.Users.user_name,
                 "images": dataImage,
+                "avatar": note.Users.linkAvatar,
             }
             list_public_notes.append(public_note)
 
@@ -491,7 +521,7 @@ def handleNotes(param):
                     .filter(
                         Notes.inArchived == 1, Notes.idUser == param
                     )  # khong nhận and mà dùng bằng dấu ,
-                    .order_by(desc(Notes.updateAt))
+                    .order_by(Notes.updateAt.desc())
                     .all()
                 )
 
@@ -504,7 +534,7 @@ def handleNotes(param):
                     .filter(
                         Notes.inArchived == 1, Notes.idUser == param
                     )  # khong nhận and mà dùng bằng dấu ,
-                    .order_by(desc(Notes.updateAt))
+                    .order_by(Notes.updateAt.desc())
                     .offset(offset)
                     .limit(limit)
                 )
@@ -517,7 +547,7 @@ def handleNotes(param):
                     .filter(
                         Notes.inArchived == 1, Notes.idUser == param
                     )  # khong nhận and mà dùng bằng dấu ,
-                    .order_by(desc(Notes.updateAt))
+                    .order_by(Notes.updateAt.desc())
                     .all()
                 )
                 return {"notes": getNotes(notes)}
@@ -603,8 +633,8 @@ def handleNotes(param):
                             g=color["g"],
                             b=color["b"],
                             a=color["a"],
-                            notePublic=json["notePublic"],
                             linkNoteShare=json["linkNoteShare"],
+                            notePublic=json["notePublic"],
                         )
                     else:
                         note = Notes(
@@ -624,6 +654,10 @@ def handleNotes(param):
                             notePublic=0,
                         )
                 db.session.add(note)
+                db.session.commit()
+                note.linkNoteShare = (
+                    "https://samnote.mangasocial.online/share-note/" + str(note.idNote)
+                )
                 if nbnote:
                     if note.notePublic == 1:
                         nbnote.nbnotes = int(nbnote.nbnotes) + 1
@@ -637,6 +671,7 @@ def handleNotes(param):
                 # print("1")
                 # if nbnote.nbnotes:
                 #     nbnote.nbnotes = (int(nbnote.nbnotes) + 1)
+
                 db.session.commit()
                 if json["type"] == "checklist" or json["type"] == "checkList":
                     for each in json["data"]:
@@ -932,6 +967,8 @@ def delTruncNote(id):
     if request.method == "DELETE":
         try:
             note_query = db.session.query(Notes).filter_by(idNote=id).first()
+            if not note_query:
+                return jsonify({"status": 404, "message": "Note not found"}), 404
             print(note_query)
             db.session.delete(note_query)
             db.session.commit()
@@ -1234,11 +1271,16 @@ def searchNoteOfUser(idUser, keysearch):
 def searchNote():
     if request.method == "GET":
         try:
+            limit = 10
+
             notes = db.session.execute(
                 text(
-                    "Select * from (select * from notes where notes.notePublic=1 and notes.inArchived=1) as b inner join datas on b.idNote=datas.idNote"
+                    "Select * from (select * from notes where notes.notePublic=1 and notes.inArchived= 1 ORDER BY  notes.createAt ASC) as b inner join datas on b.idNote=datas.idNote "
                 )
             )
+            page = request.args.get("page", "")
+            if page == None or page.count == 0 or page == "":
+                page = "1"
             search_query = request.args.get("key", "")
             notes_data = []
             for row in notes:
@@ -1247,13 +1289,59 @@ def searchNote():
                 search["title"] = row.title
                 search["content"] = row.content
                 search["type"] = row.type
+                search["createAt"] = row.createAt
+
+                userFind = Users.query.filter(Users.id == row.idUser).first()
+                if userFind != None:
+                    search["avatar_user_create"] = userFind.linkAvatar
+                    search["username_user_create"] = userFind.user_name
+
                 if search_query and row.title and row.content:
                     if (
                         search_query.lower() in row.title.lower()
                         or search_query.lower() in row.content.lower()
                     ):
                         notes_data.append(search)
-            return {"status": 200, "search_note": notes_data}
+
+            tongtinnhan = len(notes_data)
+            print("____TONG_SO_TIN_NHAN_____" + str(tongtinnhan))
+            sotrang = tongtinnhan / limit
+            if sotrang == 0:
+                return {
+                    "status": 200,
+                    "message": "error no message " + str(search_query),
+                    "data": [],
+                }
+            if sotrang < 1 and sotrang > 0:
+                sotrang = 1
+            print("_____PAGE__" + str(page))
+            offset = (sotrang - int(page)) * limit
+            if offset < 0:
+                return {
+                    "status": 202,
+                    # "search_note": [],
+                    "data": [],
+                    "message": "Error cant search notes",
+                    "number_page": 0,
+                    "current__page": page,
+                }, 202
+            ketquaReturn = []
+            sophantu = 0
+
+            for item in notes_data:
+                if sophantu >= offset and sophantu <= offset + limit + 1:
+                    ketquaReturn.append(item)
+                sophantu = sophantu + 1
+            ketuqaDaonguoc = ketquaReturn[::-1]
+            return {
+                "status": 200,
+                # "search_note": ketuqaDaonguoc,
+                "data": ketuqaDaonguoc,
+                "message": "Okie Done",
+                "number_page": sotrang,
+                "current__page": page,
+                "all_note_search": tongtinnhan,
+            }, 200
         except Exception as e:
             print(e)
             return make_response(
@@ -1584,13 +1672,6 @@ async def create_new_note_image(id_user):
         db.session.add(new_data)
         db.session.commit()
 
-        new_image = Images(
-            idNote=new_note.idNote, link=URLImage, idUserUpload=id_user, idChat1_1=0
-        )
-        print("save_image________")
-        db.session.add(new_image)
-        db.session.commit()
-
         new_note = {
             "id_note": new_note.idNote,
             "type": "image",
@@ -1704,7 +1785,7 @@ def delete_image_note():
         data = request.form
         # print(data)
         id_note = data.get("id_note")
-        id_images = request.form.getlist("id_images[]")
+        id_images = request.form.getlist("id_images")
         id_user = data.get("id_user")
         note = Notes.query.filter(Notes.idNote == id_note).first()
         # print(id_images)
@@ -1811,35 +1892,190 @@ def countView(idNote):
         return jsonify({"status": 500, "message": f"Something went wrong! {e}"}), 500
 
 
-def favorite(idComment):
-    try:
-        json = request.json
-        type = json["type"]
-        idUser = json["idUser"]
-        comment = Comments.query.filter(Comments.id == idComment).first()
-        if comment:
-            fav = Favorites.query.filter(
-                Favorites.idComment == idComment, Favorites.idUser == idUser
-            ).first()
-            if fav:
-                if fav.type == type:
-                    db.session.delete(fav)
-                    db.session.commit()
-                    return jsonify(
-                        {"status": 200, "message": "Remove favorite successful"}
-                    )
-                else:
-                    fav.type = type
-                    db.session.commit()
-                    return jsonify(
-                        {"status": 200, "message": "Update favorite successful"}
-                    )
-            else:
-                favorite = Favorites(idComment=idComment, idUser=idUser, type=type)
-                db.session.add(favorite)
-                db.session.commit()
-                return jsonify({"status": 200, "message": "Add favorite successful"})
-        else:
-            return jsonify({"status": 500, "message": "Comment is not exist"})
-    except Exception as e:
-        return jsonify({"status": 500, "message": f"Something went wrong! {e}"}), 500
+# def favorite(idComment):
+#     try:
+#         json = request.json
+#         type = json["type"]
+#         idUser = json["idUser"]
+#         comment = Comments.query.filter(Comments.id == idComment).first()
+#         if comment:
+#             fav = Favorites.query.filter(
+#                 Favorites.idComment == idComment, Favorites.idUser == idUser
+#             ).first()
+#             if fav:
+#                 if fav.type == type:
+#                     db.session.delete(fav)
+#                     db.session.commit()
+#                     return jsonify(
+#                         {"status": 200, "message": "Remove favorite successful"}
+#                     )
+#                 else:
+#                     fav.type = type
+#                     db.session.commit()
+#                     return jsonify(
+#                         {"status": 200, "message": "Update favorite successful"}
+#                     )
+#             else:
+#                 favorite = Favorites(idComment=idComment, idUser=idUser, type=type)
+#                 db.session.add(favorite)
+#                 db.session.commit()
+#                 return jsonify({"status": 200, "message": "Add favorite successful"})
+#         else:
+#             return jsonify({"status": 500, "message": "Comment is not exist"})
+#     except Exception as e:
+#         return jsonify({"status": 500, "message": f"Something went wrong! {e}"}), 500
+
+
+# def favorite_note(idNote):
+#     try:
+#         json = request.json
+#         type = json["type"]
+#         idUser = json["idUser"]
+#         note = Notes.query.filter(Notes.idNote == idNote).first()
+#         if note:
+#             fav = Favorites_Note.query.filter(
+#                 Favorites_Note.idNote == idNote, Favorites_Note.idUser == idUser
+#             ).first()
+#             if fav:
+#                 if fav.type == type:
+#                     db.session.delete(fav)
+#                     db.session.commit()
+#                     return jsonify(
+#                         {"status": 200, "message": "Remove favorite successful"}
+#                     )
+#                 else:
+#                     fav.type = type
+#                     db.session.commit()
+#                     return jsonify(
+#                         {"status": 200, "message": "Update favorite successful"}
+#                     )
+#             else:
+#                 favorite = Favorites_Note(idNote=idNote, idUser=idUser, type=type)
+#                 db.session.add(favorite)
+#                 db.session.commit()
+#                 return jsonify({"status": 200, "message": "Add favorite successful"})
+#         else:
+#             return jsonify({"status": 500, "message": "Comment is not exist"})
+#     except Exception as e:
+#         return jsonify({"status": 500, "message": f"Something went wrong! {e}"}), 500
+
+
+# favorite reply
+# def favorite_reply(id_reply):
+#     try:
+#         json_data = request.json
+#         type = json_data["type"]
+#         idUser = json_data["idUser"]
+#         reply = Comments.query.filter(Comments.id == id_reply).first()
+#         if reply != None:
+#             fav_reply = Favorites_Reply.query.filter(
+#                 Favorites_Reply.idReply == id_reply, Favorites.idUser == idUser
+#             ).first()
+#             if fav_reply:
+#                 if fav_reply.type == type:
+#                     db.session.delete(fav_reply)
+#                     db.session.commit()
+#                     return jsonify(
+#                         {"status": 200, "message": "Remove favorite successful"}
+#                     )
+#                 else:
+#                     fav_reply.type = type
+#                     db.session.commit()
+#                     return jsonify(
+#                         {"status": 200, "message": "Update favorite successful"}
+#                     )
+#             else:
+#                 favorite = Favorites_Reply(idReply=id_reply, idUser=idUser, type=type)
+#                 db.session.add(favorite)
+#                 db.session.commit()
+#                 return jsonify({"status": 200, "message": "Add favorite successful"})
+#         else:
+#             return jsonify({"status": 500, "message": "Comment is not exist"})
+#     except Exception as e:
+#         return jsonify({"status": 500, "message": f"Something went wrong! {e}"}), 500
+
+
+# search trash
+
+
+def searchTrash():
+    if request.method == "GET":
+        try:
+            limit = 10
+
+            notes = db.session.execute(
+                text(
+                    "Select * from (select * from notes where notes.notePublic=1 and notes.inArchived= 0 ORDER BY  notes.createAt ASC) as b inner join datas on b.idNote=datas.idNote "
+                )
+            )
+            page = request.args.get("page", "")
+            if page == None or page.count == 0 or page == "":
+                page = "1"
+            search_query = request.args.get("key", "")
+            notes_data = []
+            for row in notes:
+                search = {}
+                search["idNote"] = row.idNote
+                search["title"] = row.title
+                search["content"] = row.content
+                search["type"] = row.type
+                search["createAt"] = row.createAt
+                search["inArchived"] = row.inArchived
+
+                userFind = Users.query.filter(Users.id == row.idUser).first()
+                if userFind != None:
+                    search["avatar_user_create"] = userFind.linkAvatar
+                    search["username_user_create"] = userFind.user_name
+
+                if search_query and row.title and row.content:
+                    if (
+                        search_query.lower() in row.title.lower()
+                        or search_query.lower() in row.content.lower()
+                    ):
+                        notes_data.append(search)
+
+            tongtinnhan = len(notes_data)
+            print("____TONG_SO_TIN_NHAN_____" + str(tongtinnhan))
+            sotrang = tongtinnhan / limit
+            if sotrang == 0:
+                return {
+                    "status": 200,
+                    "message": "error no message " + str(search_query),
+                    "data": [],
+                }
+            if sotrang < 1 and sotrang > 0:
+                sotrang = 1
+            print("_____PAGE__" + str(page))
+            offset = (sotrang - int(page)) * limit
+            if offset < 0:
+                return {
+                    "status": 202,
+                    # "search_note": [],
+                    "data": [],
+                    "message": "Error cant search trash",
+                    "number_page": 0,
+                    "current__page": page,
+                }, 202
+            ketquaReturn = []
+            sophantu = 0
+
+            for item in notes_data:
+                if sophantu >= offset and sophantu <= offset + limit + 1:
+                    ketquaReturn.append(item)
+                sophantu = sophantu + 1
+            ketuqaDaonguoc = ketquaReturn[::-1]
+            return {
+                "status": 200,
+                # "search_note": ketuqaDaonguoc,
+                "data": ketuqaDaonguoc,
+                "message": "tim kiem du lieu trong thung rac thanh cong !",
+                "number_page": sotrang,
+                "current__page": page,
+                "all_trash_search": tongtinnhan,
+            }, 200
+        except Exception as e:
+            print(e)
+            return make_response(
+                jsonify({"status": 400, "message": str(e)}),
+                400,
+            )

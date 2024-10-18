@@ -39,3 +39,4 @@ class Users(db.Model):
     user_comment = relationship("Comments", backref="users")
     folder = relationship("Folder", backref="users", lazy=True, cascade="all, delete")
     isBlockAllUnknow = Column(Integer, nullable=False)
+    inapp = Column(Integer, nullable=False)

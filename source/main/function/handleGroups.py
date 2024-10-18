@@ -10,8 +10,9 @@ from source.main.model.images import Images
 
 from flask_jwt_extended import jwt_required
 from flask import request, make_response, jsonify
-from sqlalchemy import text, and_
+from sqlalchemy import text, and_, or_
 import jwt
+from math import *
 
 from source.socket import base64ToByte, byteToString
 
@@ -231,7 +232,7 @@ def addMembers(idGr):
             return {
                 "status": 202,
                 "message": "Please add idUserAddMe In Body Is Person Add User",
-            }
+            }, 202
         listUserNotFound = []
         listUserAdded = []
         for id in json["idMembers"]:
@@ -240,7 +241,11 @@ def addMembers(idGr):
             member = Members.query.filter(
                 Members.idUser == id, Members.idGroup == idGr
             ).all()
-            if member != None:
+            # if member != None:
+            #     listUserNotFound.append(id)
+            #     print("___Mem Da Duoc Add Roi___")
+            #     continue
+            if len(member) > 0:
                 listUserNotFound.append(id)
                 print("___Mem Da Duoc Add Roi___")
                 continue
@@ -263,7 +268,11 @@ def addMembers(idGr):
         print("_____len(listUserNotFound) ____" + str(len(listUserNotFound)))
         print("_____len(idMembers) ____" + str(len(json["idMembers"])))
         if len(listUserNotFound) == 0:
-            return {"status": 200, "message": "Member was added successfully"}
+            return {
+                "status": 200,
+                "message": "Member was added successfully",
+                "listUserAdded": listUserAdded,
+            }, 200
         else:
             dataReturnCount = ""
             for item in listUserNotFound:
@@ -278,7 +287,7 @@ def addMembers(idGr):
                 + " list id add okie "
                 + dataAdded,
                 "data": "List user added " + dataAdded,
-            }
+            }, 205
     except Exception as e:
         print(e)
         return make_response(
@@ -503,7 +512,7 @@ def getAllPhotoGroup(idgroup):
                 return make_response(
                     jsonify(
                         {
-                            "status": 200,
+                            "status": 300,
                             "message": "No image chat in idgroup = "
                             + str(idgroup)
                             + " in database",
@@ -526,7 +535,7 @@ def getAllPhotoGroup(idgroup):
                 return {
                     "status": 200,
                     "data": [],
-                    "message": "page not found " + str(page),
+                    # "message": "page not found " + str(page),
                 }
             print("____OFFSET___" + str(offset))
             chat_room = (
@@ -915,4 +924,161 @@ def getListMessageUser(idUser):
         return result
     except Exception as e:
         print("Error:", str(e))
+        return {"status": 500, "message": str(e)}
+
+
+# get group by user
+def getGroupByUser(idUser):
+    page = request.args.get("page")
+    try:
+        members = Members.query.filter(Members.idUser == idUser).all()
+        print("-----user----", members)
+        if not members:
+            return jsonify(
+                {
+                    "status": 404,
+                    "data": [],
+                    "message": "User not found or has no groups.",
+                }
+            )
+
+        list_data = []
+        total_item = 0
+        for item in members:
+            print("itemm-------", item)
+            data = dict()
+            group = Groups.query.filter(Groups.idGroup == item.idGroup).all()
+            print("------group-----", group)
+            if not group:
+                return jsonify(
+                    {
+                        "status": 404,
+                        "data": [],
+                        "message": "There are no groups this user is a member of.",
+                    }
+                )
+            limit = 10
+            tongsopage = len(group) / limit
+            if tongsopage == 0:
+                return {
+                    "status": 202,
+                    "data": [],
+                    "message": "Database can not found Number ",
+                }
+            offset = 0
+            if tongsopage > 0 and tongsopage < 1:
+                offset = (1 - int(page)) * limit
+            if tongsopage >= 1:
+                truPage = tongsopage - int(page)
+                if truPage > -1 and truPage < 0:
+                    truPage = 0
+                offset = truPage * limit
+            if offset < 0:
+                return {
+                    "status": 203,
+                    "data": [],
+                    "message": "page not found " + str(page),
+                }
+            group_sort = (
+                Groups.query.filter(Groups.idGroup == item.idGroup)
+                .order_by(Groups.createAt.asc())
+                .limit(limit)
+                .offset(offset)
+                .all()
+            )
+            for list_group in group_sort:
+                data = {
+                    "idGroup": list_group.idGroup,
+                    "Name": list_group.name,
+                    "linkAvatar": list_group.linkAvatar,
+                    "describe": list_group.describe,
+                    "idUser": item.idUser,
+                    "idOwner": list_group.idOwner,
+                    "idMemberOf_Owner": list_group.idMemberOf_Owner,
+                    "createAt": list_group.createAt,
+                }
+                list_data.append(data)
+                total_item = len(list_data)
+        return jsonify(
+            {
+                "status": 200,
+                "data": list_data,
+                "number_page": tongsopage,
+                "total_item": total_item,
+            }
+        )
+    except Exception as e:
+        print("-----error-----", e)
+        return jsonify(
+            {
+                "status": 500,
+                "message": "An error occurred, please check again",
+                "data": [],
+            }
+        )
+
+
+# seach group
+def search_group():
+    try:
+        page = request.args.get("page", "")
+        if page == None or page.count == 0 or page == "":
+            page = "1"
+        txt = request.args.get("text")
+        groups = (
+            Groups.query.filter(
+                or_(Groups.name.ilike(f"%{txt}%"), Groups.describe.ilike(f"%{txt}%"))
+            )
+            .order_by(Groups.createAt.asc())
+            .all()
+        )
+        if groups:
+            data_group = []
+            for group in groups:
+                info = {}
+                data_group.append(
+                    {
+                        "idGroup": group.idGroup,
+                        "Name": group.name,
+                        "linkAvatar": group.linkAvatar,
+                        "describe": group.describe,
+                        "idOwner": group.idOwner,
+                        "idMemberOf_Owner": group.idMemberOf_Owner,
+                        "createAt": group.createAt,
+                    }
+                )
+            limit = 20
+            tongtinnhan = len(data_group)
+            sotrang = tongtinnhan / limit
+            if sotrang == 0:
+                return {
+                    "status": 203,
+                    "message": "error no message " + str(id),
+                    "data": [],
+                }
+            if sotrang < 1 and sotrang > 0:
+                sotrang = 1
+            print("_____PAGE__" + str(page))
+            offset = (sotrang - int(page)) * limit
+            ketquaReturn = []
+            sophantu = 0
+
+            for item in data_group:
+                if sophantu >= offset and sophantu <= offset + limit + 1:
+                    ketquaReturn.append(item)
+                sophantu = sophantu + 1
+
+            return {
+                "status": 200,
+                "data": ketquaReturn,
+                "number_page": sotrang,
+                "number__item": tongtinnhan,
+                "current_page": page,
+            }
+        else:
+            return {"status": 500, "message": "No result"}
+
+    except Exception as e:
+        # Log the error message
+        print("SQL Error:", str(e))
         return {"status": 500, "message": str(e)}

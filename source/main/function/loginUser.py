@@ -81,6 +81,7 @@ def loginUser():
                             "id": User.id,
                             "name": User.name,
                             "gmail": User.gmail,
+                            "inapp": User.inapp,
                             "df_color": {
                                 "r": User.r,
                                 "g": User.g,

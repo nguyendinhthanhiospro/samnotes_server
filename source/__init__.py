@@ -15,7 +15,7 @@ from flask_jwt_extended import set_access_cookies
 from flask_sslify import SSLify
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 # sslify = SSLify(app)
 app.config["SECRET_KEY"] = "devsenior"
 app.config["SECURITY_PASSWORD_SALT"] = "devsenior"
@@ -59,4 +59,5 @@ socketIo = SocketIO(
     max_http_buffer_size=1024 * 1024 * 50,
     logger=True,
     engineio_logger=True,
+    async_mode="threading",
 )

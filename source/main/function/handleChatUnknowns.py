@@ -71,7 +71,7 @@ def handleChatUnknowns():
         if request.method == "DELETE":
             pass
     except Exception as e:
-        return {"status": 500, "message": str(e)}
+        return {"status": 500, "message": str(e)}, 500
 
 
 def handleMessages_sendfile(id):
@@ -99,10 +99,10 @@ def handleMessages_sendfile(id):
                 chat_parse["sendAt"] = chat.sendAt.strftime("%a, %d %b %Y %H:%M:%S GMT")
                 data.append(chat_parse)
 
-            return {"status": 200, "data": data}
+            return {"status": 200, "data": data}, 200
         except Exception as e:
             print(str(e))
-            return {"status": 500, "message": str(e)}
+            return {"status": 500, "message": str(e)}, 500
     if request.method == "POST":
         PATH_IMAGE = "/var/www/samnote-build/image"
         try:
@@ -150,6 +150,7 @@ def handleMessages_sendfile(id):
                     type=input_data_json["type"],
                     idSend=int(id),
                     idRoom=input_data_json["idRoom"],
+                    status="unseen",  # tin nhan moi danh dau la chua xem
                 )
                 print(
                     "_____________chatUnknowns_____________"
@@ -164,6 +165,7 @@ def handleMessages_sendfile(id):
                     type=input_data_json["type"],
                     idSend=int(id),
                     idRoom=input_data_json["idRoom"],
+                    status="unseen",  # tin nhan moi chua duoc xem
                 )
                 print("______chatUnknowns_______" + str(chatUnknowns))
             elif input_data_json["type"] == "gif":
@@ -174,6 +176,7 @@ def handleMessages_sendfile(id):
                     type=input_data_json["type"],
                     idSend=int(id),
                     idRoom=input_data_json["idRoom"],
+                    status="unseen",  # gril default unseen
                 )
             print("__________chatUnknowns______________" + str(chatUnknowns))
             db.session.add(chatUnknowns)
@@ -197,11 +200,11 @@ def handleMessages_sendfile(id):
                 "%a, %d %b %Y %H:%M:%S GMT"
             )
             chat_parse["idRoom"] = chatUnknowns.idRoom
-            return {"status": 200, "message": chat_parse}
+            return {"status": 200, "message": chat_parse}, 200
         except Exception as e:
             # Log the error message
             print("SQL Error:", str(e))
-            return {"status": 500, "message": str(e)}
+            return {"status": 500, "message": str(e)}, 500
 
 
 def DisableUnknownAccount(idUser):
@@ -222,10 +225,10 @@ def DisableUnknownAccount(idUser):
                 messagePro = "Enable all user sent message unknowns"
             db.session.add(userFind)
             db.session.commit()
-            return {"status": 200, "message": messagePro}
+            return {"status": 200, "message": messagePro}, 200
         except Exception as e:
             print(str(e))
-            return {"status": 500, "message": str(e)}
+            return {"status": 500, "message": str(e)}, 500
 
 
 def handleMessages(id):
@@ -260,39 +263,39 @@ def handleMessages(id):
             )
         except Exception as e:
             print(str(e))
-            return {"status": 500, "message": str(e)}
+            return {"status": 500, "message": str(e)}, 500
     if request.method == "POST":
         if json["idReceive"] == None:
             return {
-                "status": 205,
+                "status": 400,
                 "message": "Please input body idReceive is owner user id",
-            }
+            }, 400
         list_block_unknow = block_unknow.query.filter(
             block_unknow.idUserOwner == json["idReceive"],
             block_unknow.idUserBlock == int(id),
         ).first()
         if list_block_unknow != None:
             return {
-                "status": 405,
+                "status": 403,
                 "message": "Account "
                 + str(json["idReceive"])
                 + " Block "
                 + str(id)
                 + " , Please Recheck",
-            }
+            }, 403
         user = Users.query.filter(Users.id == json["idReceive"]).first()
         if user == None:
             return {
-                "status": 209,
+                "status": 400,
                 "message": "cant find user have id: " + str(json["idReceive"]),
-            }
+            }, 400
         if user.isBlockAllUnknow == 1:
             return {
-                "status": 406,
+                "status": 403,
                 "message": "Account "
                 + str(json["idReceive"])
                 + " Disable Receive Any Unknowns Message",
-            }
+            }, 403
 
         PATH_IMAGE = "/var/www/samnote-build/image"
         json = request.json
@@ -409,7 +412,8 @@ def handleMessagesRecevie():
             tong_tin_nhan_unknow = ChatUnknowns.query.filter(
                 ChatUnknowns.idRoom == idRoom
             ).all()
-            limit = 50
+            # print(tong_tin_nhan_unknow)
+            limit = 30
             room2 = ""
             if len(tong_tin_nhan_unknow) == 0:
                 room_split_dao_nguoc = idRoom.split("#")
@@ -422,17 +426,28 @@ def handleMessagesRecevie():
             print("_________tongsopage______", str(tongsopage))
             offset = 0
             if tongsopage == 0:
+                # return {
+                #     "status": 200,
+                #     "data": "id Room "
+                #     + str(idRoom)
+                #     + " or "
+                #     + str(room2)
+                #     + " - No room, please input room is: idUserSend#idUserRecive Example: 90#71",
+                # }
                 return {
-                    "status": 200,
-                    "data": "id Room "
-                    + str(idRoom)
-                    + " or "
-                    + str(room2)
-                    + " - No room, please input room is: idUserSend#idUserRecive Example: 90#71",
-                }
+                    "status": 400,
+                    "message": "No room, please check again",
+                    "data": [],
+                }, 400
             if tongsopage > 0 and tongsopage < 1:
                 offset = (1 - int(page)) * limit
                 print("______" + str(offset))
+                if offset < 0:
+                    return {
+                        "message": "The page is out of data, please check again",
+                        "data": [],
+                        "status": 400,
+                    }, 400
             else:
                 offset = (tongsopage - int(page)) * limit
             chats = (
@@ -458,9 +473,15 @@ def handleMessagesRecevie():
                 "data": data,
                 "numberPage": tongsopage,
                 "numberItem": len(data),
-            }
+            }, 200
     except Exception as e:
-        return {"status": 500, "message": str(e), "numberPage": 0, "numberItem": 0}
+        return {
+            "status": 500,
+            "message": "The page is out of data, please check again",
+            "numberPage": 0,
+            "numberItem": 0,
+            "data": [],
+        }, 500
 
 
 def handleListUser(id):
@@ -493,9 +514,14 @@ def handleListUser(id):
                 data_user["idUser"] = user.id
                 data_user["username"] = user.user_name
                 data_user["avatar"] = user.linkAvatar
-                # dem so tin nhan chua doc
+                # dem so tin nhan chua doc qua tung room
                 unReadCount = ChatUnknowns.query.filter_by(
-                    idSend=id, status="unseen"
+                    idReceive=id, idRoom=chat.idRoom, status="unseen"
+                ).count()
+                # tong so tin nhan chua duoc doc
+                # dem so tin nhan chua doc
+                unReadCountAll = ChatUnknowns.query.filter_by(
+                    idReceive=id, status="unseen"
                 ).count()
                 if chat.type in ["image", "multi-image", "icon-image", "gif"]:
                     last_text = "sent an image"
@@ -529,6 +555,10 @@ def handleListUser(id):
                 data_user["avatar"] = (
                     "http://samnote.mangasocial.online/get-image-chat/0/anonymous.png"
                 )
+                # dem so tin nhan chua doc
+                unReadCount = ChatUnknowns.query.filter_by(
+                    idReceive=id, idRoom=chat.idRoom, status="unseen"
+                ).count()
                 res.append(
                     {
                         "idRoom": chat.idRoom,
@@ -538,10 +568,11 @@ def handleListUser(id):
                         "last_text": last_text,
                         "send_at": chat.sendAt.strftime("%a, %d %b %Y %H:%M:%S GMT"),
                         "user": data_user,
+                        "unReadCount": unReadCount,  # hien thi so tin nhan chua doc
                     }
                 )
             result = sorted(res, key=lambda x: x["idMessage"], reverse=True)
-            return {"status": 200, "data": result}
+            return {"status": 200, "data": result, "unReadCountAll": unReadCountAll}
     except Exception as e:
         # Log the error message
         print("SQL Error:", str(e))
@@ -910,14 +941,17 @@ def handleGetMesChat1vs1(id, idReceived):
 
 def handleSearchText(id, text):
     try:
+        page = request.args.get("page", "")
+        if page == None or page.count == 0 or page == "":
+            page = "1"
         txt = text
         chats = (
             ChatUnknowns.query.filter(ChatUnknowns.text.ilike(f"%{txt}%"))
-            .order_by(ChatUnknowns.idMes.desc())
+            .order_by(ChatUnknowns.idMes.asc())
             .all()
         )
         if chats:
-            data = []
+            data_message__unknow = []
             for chat in chats:
                 info = {}
                 print("__chat.idRoom___" + str(chat.idRoom) + "______" + str(id))
@@ -931,18 +965,46 @@ def handleSearchText(id, text):
                     info["idUser"] = user.id
                     info["username"] = user.user_name
                     info["avatar"] = user.linkAvatar
-                data.append(
+                data_message__unknow.append(
                     {
                         "idSend": int(chat.idSend),
-                        "idReceive": int(chat.idReceive),
-                        "idMessage": chat.idMes,
-                        "text": chat.text,
+                        # "idReceive": int(chat.idReceive),
+                        # "idMessage": chat.idMes,
+                        # "text": chat.text,
+                        # "content": chat.text,
                         "sendAt": chat.sendAt.strftime("%a, %d %b %Y %H:%M:%S GMT"),
                         "user": info,
                         "idRoom": chat.idRoom,
                     }
                 )
-            return {"status": 200, "data": data}
+            limit = 20
+            tongtinnhan = len(data_message__unknow)
+            sotrang = tongtinnhan / limit
+            if sotrang == 0:
+                return {
+                    "status": 203,
+                    "message": "error no message " + str(id),
+                    "data": [],
+                }
+            if sotrang < 1 and sotrang > 0:
+                sotrang = 1
+            print("_____PAGE__" + str(page))
+            offset = (sotrang - int(page)) * limit
+            ketquaReturn = []
+            sophantu = 0
+
+            for item in data_message__unknow:
+                if sophantu >= offset and sophantu <= offset + limit + 1:
+                    ketquaReturn.append(item)
+                sophantu = sophantu + 1
+
+            return {
+                "status": 200,
+                "data": ketquaReturn,
+                "number_page": sotrang,
+                "number__item": tongtinnhan,
+                "current_page": page,
+            }
         else:
             return {"status": 500, "message": "No result"}
 

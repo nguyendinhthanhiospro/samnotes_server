@@ -60,3 +60,15 @@ app.add_url_rule(
     methods=["GET"],
     view_func=getListMessageUser,
 )
+
+app.add_url_rule(
+    "/group/list_group_byUser/<string:idUser>",
+    methods=["GET"],
+    view_func=getGroupByUser,
+)
+
+app.add_url_rule(
+    "/group/search_group",
+    methods=["GET"],
+    view_func=search_group,
+)

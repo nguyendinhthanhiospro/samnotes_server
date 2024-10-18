@@ -11,6 +11,7 @@ import random
 
 import uuid
 
+
 def getNotes(notes):
     try:
         data = []
@@ -20,7 +21,10 @@ def getNotes(notes):
                 flag = False
                 if len(data) > 0:
                     for item in data:
-                        if item["type"] == "checklist" and item["idNote"] == note.idNote:
+                        if (
+                            item["type"] == "checklist"
+                            and item["idNote"] == note.idNote
+                        ):
                             flag = True
                             item["data"].append(
                                 {
@@ -42,7 +46,9 @@ def getNotes(notes):
                     note_parse["title"] = note.title
                     note_parse["doneNote"] = note.doneNote
                     note_parse["createAt"] = str(note.createAt)
-                    note_parse["dueAt"] = str(note.dueAt) if (note.dueAt) else note.dueAt
+                    note_parse["dueAt"] = (
+                        str(note.dueAt) if (note.dueAt) else note.dueAt
+                    )
                     note_parse["remindAt"] = (
                         str(note.remindAt) if (note.remindAt) else note.remindAt
                     )
@@ -73,7 +79,12 @@ def getNotes(notes):
                 note_parse["idUser"] = note.idUser
                 note_parse["notePublic"] = note.notePublic  # ___SONPIPI____
                 note_parse["linkNoteShare"] = note.linkNoteShare  # ___SONPIPI____
-                note_parse["color"] = {"r": note.r, "g": note.g, "b": note.b, "a": note.a}
+                note_parse["color"] = {
+                    "r": note.r,
+                    "g": note.g,
+                    "b": note.b,
+                    "a": note.a,
+                }
             if note.type == "image" or note.type == "screenshot":
                 note_parse["idNote"] = note.idNote
                 note_parse["type"] = note.type
@@ -91,7 +102,12 @@ def getNotes(notes):
                 note_parse["linkNoteShare"] = note.linkNoteShare  # ___SONPIPI____
                 note_parse["pinned"] = note.pinned
                 note_parse["idUser"] = note.idUser
-                note_parse["color"] = {"r": note.r, "g": note.g, "b": note.b, "a": note.a}
+                note_parse["color"] = {
+                    "r": note.r,
+                    "g": note.g,
+                    "b": note.b,
+                    "a": note.a,
+                }
             if bool(note_parse):
                 data.append(note_parse)
         freshData = []
@@ -102,11 +118,11 @@ def getNotes(notes):
             freshData.append(note_parse)
         return freshData
     except Exception as e:
-            print(e)
-            return make_response(
-                jsonify({"status": 400, "message": "Request fail. Please try again"}),
-                400,
-            )
+        print(e)
+        return make_response(
+            jsonify({"status": 400, "message": "Request fail. Please try again"}),
+            400,
+        )
 
 
 def specific_string(length):
@@ -116,11 +132,11 @@ def specific_string(length):
         result = "".join((random.choice(sample_string)) for x in range(length))
         print(" Randomly generated string is: ", result)
     except Exception as e:
-            print(e)
-            return make_response(
-                jsonify({"status": 400, "message": "Request fail. Please try again"}),
-                400,
-            )
+        print(e)
+        return make_response(
+            jsonify({"status": 400, "message": "Request fail. Please try again"}),
+            400,
+        )
 
 
 def getNote(param, lock=False, babel=False):
@@ -149,7 +165,9 @@ def getNote(param, lock=False, babel=False):
                     else:
                         note_parse["doneNote"] = True
                     note_parse["createAt"] = str(note.createAt)
-                    note_parse["dueAt"] = str(note.dueAt) if (note.dueAt) else note.dueAt
+                    note_parse["dueAt"] = (
+                        str(note.dueAt) if (note.dueAt) else note.dueAt
+                    )
                     note_parse["remindAt"] = (
                         str(note.remindAt) if (note.remindAt) else note.remindAt
                     )
@@ -179,9 +197,9 @@ def getNote(param, lock=False, babel=False):
                 note_parse["data"] = note.content
                 note_parse["title"] = note.title
                 if note.doneNote == 0:
-                        note_parse["doneNote"] = False
+                    note_parse["doneNote"] = False
                 else:
-                        note_parse["doneNote"] = True
+                    note_parse["doneNote"] = True
                 note_parse["createAt"] = str(note.createAt)
                 note_parse["notePublic"] = note.notePublic  # ___SONPIPI____
                 note_parse["linkNoteShare"] = note.linkNoteShare  # ___SONPIPI____
@@ -192,7 +210,12 @@ def getNote(param, lock=False, babel=False):
                 note_parse["lock"] = None
                 note_parse["pinned"] = note.pinned
                 note_parse["idUser"] = note.idUser
-                note_parse["color"] = {"r": note.r, "g": note.g, "b": note.b, "a": note.a}
+                note_parse["color"] = {
+                    "r": note.r,
+                    "g": note.g,
+                    "b": note.b,
+                    "a": note.a,
+                }
             if note.type == "image" or note.type == "screenshot":
                 note_parse["idNote"] = note.idNote
                 note_parse["type"] = note.type
@@ -201,9 +224,9 @@ def getNote(param, lock=False, babel=False):
                 note_parse["notePublic"] = note.notePublic  # ___SONPIPI____
                 note_parse["linkNoteShare"] = note.linkNoteShare  # ___SONPIPI____
                 if note.doneNote == 0:
-                        note_parse["doneNote"] = False
+                    note_parse["doneNote"] = False
                 else:
-                        note_parse["doneNote"] = True
+                    note_parse["doneNote"] = True
                 note_parse["createAt"] = str(note.createAt)
                 note_parse["dueAt"] = str(note.dueAt) if (note.dueAt) else note.dueAt
                 note_parse["remindAt"] = (
@@ -213,24 +236,29 @@ def getNote(param, lock=False, babel=False):
                 note_parse["metaData"] = note.metaData
                 note_parse["pinned"] = note.pinned
                 note_parse["idUser"] = note.idUser
-                note_parse["color"] = {"r": note.r, "g": note.g, "b": note.b, "a": note.a}
+                note_parse["color"] = {
+                    "r": note.r,
+                    "g": note.g,
+                    "b": note.b,
+                    "a": note.a,
+                }
         if note.lock:
             if lock == True or babel == True:
                 note_parse["data"] = "Locked"
             note_parse["lock"] = "*******"
         return note_parse
     except Exception as e:
-            print(e)
-            return make_response(
-                jsonify({"status": 400, "message": "Request fail. Please try again"}),
-                400,
-            )
+        print(e)
+        return make_response(
+            jsonify({"status": 400, "message": "Request fail. Please try again"}),
+            400,
+        )
 
 
 def getOnlyNote(idNote):
     if request.method == "GET":
         return {"note": getNote(idNote, babel=True)}
-    else: 
+    else:
         return {"status": 400, "message": "Invalid request method"}
 
 
@@ -396,7 +424,7 @@ def handleNotes(param):
                 jsonify({"status": 400, "message": "Request fail. Please try again"}),
                 400,
             )
-            
+
     if request.method == "PATCH":
         try:
             json = request.json
@@ -474,7 +502,7 @@ def handleNotes(param):
                 jsonify({"status": 400, "message": "Request fail. Please try again"}),
                 400,
             )
-            
+
     if request.method == "DELETE":
         try:
 
@@ -554,6 +582,7 @@ def trashGet(idUser):
             )
     else:
         return {"status": 400, "message": "Invalid request method"}
+
 
 def getAllNotes_images(idUser):
     if request.method == "GET":

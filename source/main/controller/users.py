@@ -84,6 +84,13 @@ app.add_url_rule(
 app.add_url_rule("/users-online", methods=["GET"], view_func=get_list_user_online)
 app.add_url_rule("/deleteuser", methods=["GET"], view_func=del_user)
 
+app.add_url_rule(
+    "/check_inapp/<string:id_user>", methods=["GET"], view_func=check_inapp
+)
+app.add_url_rule(
+    "/buy_in_app_okie/<string:id_user>", methods=["GET"], view_func=buy_in_app_okie
+)
+
 
 def get_data_email():
     try:
@@ -607,7 +614,7 @@ def random_pass(length):
     return random_string
 
 
-@app.route("/resetPasswork", methods=["GET", "POST"])
+@app.route("/resetPassword", methods=["GET", "POST"])
 async def forgotPasswork():
     json = request.json
     try:
@@ -679,9 +686,11 @@ async def changePassword(id):
             user = Users.query.filter(Users.id == id).first()
             old_passwork = json.get("password")
             new_passwork = json.get("new_password")
+            print("______oldPassword______", old_passwork)
             password_matched = pbkdf2_sha256.verify(old_passwork, user.password_hash)
             # pbkdf2_sha256.verify(json["password"], User.password_hash)
-            print("check_pass_____", password_matched)
+            print("_____password hard_____", user.password_hash)
+            print("_____check_pass_____", password_matched)
             token = s.dumps(json, salt=app.config["SECURITY_PASSWORD_SALT"])
             link = url_for("confirmgmail", token=token, _external=True)
             print(token)
@@ -917,7 +926,13 @@ def getListImageHistory(idUser):
             data = (
                 db.session.query(Notes)
                 .join(Images, Notes.idNote == Images.idNote)
-                .with_entities(Notes.idNote, Images.link, Notes.updateAt, Notes.type)
+                .with_entities(
+                    Notes.idNote,
+                    Images.link,
+                    Notes.updateAt,
+                    Notes.type,
+                    Images.idImage,
+                )
                 .filter(Notes.idUser == idUser)
                 .order_by(Notes.updateAt.desc())
                 .all()
@@ -928,7 +943,12 @@ def getListImageHistory(idUser):
                 if time not in result:
                     result[f"{time}"] = []
                 result[f"{time}"].append(
-                    {"image": item[1], "idNote": item[0], "type": item[3]}
+                    {
+                        "image": item[1],
+                        "idNote": item[0],
+                        "type": item[3],
+                        "id_images": item[4],
+                    }
                 )
 
             used_time = []
@@ -945,3 +965,35 @@ def getListImageHistory(idUser):
         # Log the error message
         print("Error:", str(e))
         return {"status": 500, "message": str(e)}
+
+
+# delete image
+@app.route("/profile/delete_image_profile", methods=["DELETE"])
+def delete_image_profile():
+    try:
+        data = request.form
+        # print(data)
+        id_note = data.get("id_note")
+        id_images = request.form.getlist("id_images")
+        id_user = data.get("id_user")
+        note = Notes.query.filter(Notes.idNote == id_note).first()
+        # print(id_images)
+        if str(note.idUser) != str(id_user):
+            result_data = {
+                "error": "This is not your note",
+            }
+        else:
+            for id_image in id_images:
+                image = Images.query.filter(Images.idImage == id_image).first()
+                # print(image)
+                db.session.delete(image)
+                db.session.commit()
+            result_data = {
+                "action": "deleted",
+            }
+
+        return jsonify({"status": 200, "message": "Success", "data": result_data}), 200
+
+    except Exception as e:
+        print("____Error from server:______ " + str(e))
+        return make_response(jsonify("____Error from server:______ ", str(e)), 500)

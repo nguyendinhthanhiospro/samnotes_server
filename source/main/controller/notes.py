@@ -54,6 +54,7 @@ app.add_url_rule("/unlocknote/<string:idNote>", methods=["POST"], view_func=unlo
 app.add_url_rule("/openlock/<string:idNote>", methods=["POST"], view_func=openLock)
 app.add_url_rule("/trunc-notes/<string:id>", methods=["DELETE"], view_func=delTruncNote)
 app.add_url_rule("/trash/<string:idUser>", methods=["GET"], view_func=trashGet)
+app.add_url_rule("/searchTrash", methods=["GET"], view_func=searchTrash)
 app.add_url_rule(
     "/listimage/<string:idUser>", methods=["GET"], view_func=getAllNotes_images
 )
@@ -66,6 +67,7 @@ app.add_url_rule("/tick/<string:idData>", methods=["PATCH"], view_func=tickerBox
 app.add_url_rule("/last-note", methods=["GET"], view_func=getLastNote)
 app.add_url_rule("/list-user", methods=["GET"], view_func=getLastNote)
 app.add_url_rule("/note-share/<string:nid>", methods=["GET"], view_func=getNotesShare)
+app.add_url_rule("/public_notes_search", methods=["GET"], view_func=searchNote)
 
 app.add_url_rule("/notes_search", methods=["GET"], view_func=searchNote)
 app.add_url_rule(
@@ -102,7 +104,7 @@ app.add_url_rule(
 )
 app.add_url_rule(
     "/delete_image_note",
-    methods=["POST"],
+    methods=["DELETE"],
     view_func=delete_image_note,
 )
 app.add_url_rule(
@@ -124,8 +126,17 @@ app.add_url_rule(
     view_func=countView,
 )
 
-app.add_url_rule(
-    "/notes/favorite/<idComment>",
-    methods=["POST"],
-    view_func=favorite,
-)
+# app.add_url_rule(
+#     "/notes/favorite/<idComment>",
+#     methods=["POST"],
+#     view_func=favorite,
+# )
+
+# app.add_url_rule(
+#     "/notes/favorite_notes/<idNote>", methods=["POST"], view_func=favorite_note
+# )
+
+# favorite reply
+# app.add_url_rule(
+#     "/notes/favorite_reply/<id_reply>", methods=["POST"], view_func=favorite_reply
+# )

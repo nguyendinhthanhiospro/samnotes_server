@@ -10,6 +10,8 @@ from source.main.model.nbnotes import Nbnotes
 from source.main.model.floders import Folder
 from source.main.model.chat1vs1 import Chat1vs1
 from source.main.model.relationship import Relationship
+from source.main.model.favorite_note import Favorites_Note
+from source.main.model.favorite_reply import Favorites_Reply
 
 if __name__ == "__main__":
     db.create_all()
